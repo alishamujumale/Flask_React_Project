@@ -1,12 +1,13 @@
-from flask import Flask, request
+from flask import Flask, request,jsonify
 from flask_restx import Api, Resource, fields
 from flask_cors import CORS
 from flask_migrate import Migrate
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash,check_password_hash
 
 from config import DevConfig
 from models import Recipe, User
 from exts import db
+from flask_jwt_extended import JWTManager,create_access_token,create_refresh_token,jwt_required
 
 app = Flask(__name__)
 CORS(app)
@@ -14,6 +15,7 @@ app.config.from_object(DevConfig)
 
 db.init_app(app)
 migrate = Migrate(app, db)
+JWTManager(app)
 
 api = Api(app, doc='/docs')
 
@@ -37,6 +39,15 @@ signup_model = auth_ns.model(
         "username": fields.String(required=True),
         "email": fields.String(required=True),
         "password": fields.String(required=True)
+    }
+)
+
+login_model=auth_ns.model(
+    "Login",
+    {
+    "username":fields.String(),
+    "email":fields.String(),
+    "password":fields.String()
     }
 )
 
@@ -74,8 +85,23 @@ class SignUp(Resource):
 
 @auth_ns.route('/login')
 class Login(Resource):
+    @auth_ns.expect(login_model)
     def post(self):
-        return {"message": "Login endpoint coming soon"}
+        data=request.get_json()
+
+        username=data.get('username')
+        password=data.get('password')
+        db_user=User.query.filter_by(username=username).first()
+        if db_user and check_password_hash(db_user.password, password):
+            access_token=create_access_token(identity=db_user.username)
+            refresh_token=create_refresh_token(identity=db_user.username)
+
+            return jsonify(
+                {"access_token":access_token,"refresh_token":refresh_token}
+            )
+          
+
+          
 
 # ---------------- RECIPES ----------------
 
@@ -88,6 +114,7 @@ class Recipes(Resource):
 
     @recipe_ns.expect(recipe_model)
     @recipe_ns.marshal_with(recipe_model)
+    @jwt_required()
     def post(self):
         data = request.get_json()
 
@@ -111,6 +138,7 @@ class RecipeById(Resource):
 
     @recipe_ns.expect(recipe_model)
     @recipe_ns.marshal_with(recipe_model)
+    @jwt_required()
     def put(self, id):
         recipe = Recipe.query.get_or_404(id)
         data = request.get_json()
@@ -120,7 +148,7 @@ class RecipeById(Resource):
 
         db.session.commit()
         return recipe
-
+    @jwt_required()
     def delete(self, id):
         recipe = Recipe.query.get_or_404(id)
         db.session.delete(recipe)
