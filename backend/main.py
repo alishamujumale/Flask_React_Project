@@ -4,6 +4,7 @@ from config import DevConfig
 from flask_cors import CORS
 from models import Recipe
 from exts import db
+from flask_migrate import Migrate
 
 
 app=Flask(__name__)
@@ -11,6 +12,8 @@ CORS(app)
 app.config.from_object(DevConfig)
 
 db.init_app(app)
+
+migrate=Migrate(app,db)
 
 api=Api(app,doc='/docs')
 
