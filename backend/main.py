@@ -1,105 +1,132 @@
-from flask import Flask,request
-from flask_restx import Api,Resource,fields
-from config import DevConfig
+from flask import Flask, request
+from flask_restx import Api, Resource, fields
 from flask_cors import CORS
-from models import Recipe
-from exts import db
 from flask_migrate import Migrate
+from werkzeug.security import generate_password_hash
 
+from config import DevConfig
+from models import Recipe, User
+from exts import db
 
-app=Flask(__name__)
+app = Flask(__name__)
 CORS(app)
 app.config.from_object(DevConfig)
 
 db.init_app(app)
+migrate = Migrate(app, db)
 
-migrate=Migrate(app,db)
+api = Api(app, doc='/docs')
 
-api=Api(app,doc='/docs')
+# Namespaces
+auth_ns = api.namespace('auth', description='Authentication APIs')
+recipe_ns = api.namespace('recipes', description='Recipe APIs')
 
-#model serializer
-recipe_model=api.model(
+# Models
+recipe_model = recipe_ns.model(
     "Recipe",
     {
-        "id":fields.Integer(),
-        "title":fields.String(),
-        "description":fields.String()
+        "id": fields.Integer(),
+        "title": fields.String(),
+        "description": fields.String()
     }
 )
 
+signup_model = auth_ns.model(
+    "SignUp",
+    {
+        "username": fields.String(required=True),
+        "email": fields.String(required=True),
+        "password": fields.String(required=True)
+    }
+)
 
-@api.route('/hello')
-class HelloResource(Resource):
+# ---------------- AUTH ----------------
+
+@auth_ns.route('/hello')
+class Hello(Resource):
     def get(self):
-        return {"message":"Hello World"}
-    
-
-@api.route('/recipes')
-class RecipesResource(Resource):
-    
-    @api.marshal_list_with(recipe_model)
-    def get(self):
-        """Get all recipes"""
-        recipes=Recipe.query.all()
+        return {"message": "Hello World"}
 
 
-        return recipes
-    @api.marshal_with(recipe_model)
+@auth_ns.route('/signup')
+class SignUp(Resource):
+    @auth_ns.expect(signup_model)
     def post(self):
-        """Create a new recipe"""
+        data = request.get_json()
 
-        data=request.get_json()
+        username = data.get("username")
 
-        new_recipe=Recipe(
-            title=data.get('title'),
-            description=data.get('description')
+        db_user = User.query.filter_by(username=username).first()
+        if db_user:
+            return {"message": f"User with username {username} already exists"}, 400
+
+        new_user = User(
+            username=username,
+            email=data.get("email"),
+            password=generate_password_hash(data.get("password"))
         )
 
-        new_recipe.save()
+        db.session.add(new_user)
+        db.session.commit()
 
-        return new_recipe,201
+        return {"message": "User created successfully"}, 201
 
-@api.route('/recipe/<int:id>')
-class RecipeResource(Resource):
-    @api.marshal_with(recipe_model)
-    def get(self,id):
-        """Get a recipe by id"""
-        recipe=Recipe.query.get_or_404(id)
 
+@auth_ns.route('/login')
+class Login(Resource):
+    def post(self):
+        return {"message": "Login endpoint coming soon"}
+
+# ---------------- RECIPES ----------------
+
+@recipe_ns.route('/')
+class Recipes(Resource):
+
+    @recipe_ns.marshal_list_with(recipe_model)
+    def get(self):
+        return Recipe.query.all()
+
+    @recipe_ns.expect(recipe_model)
+    @recipe_ns.marshal_with(recipe_model)
+    def post(self):
+        data = request.get_json()
+
+        recipe = Recipe(
+            title=data.get("title"),
+            description=data.get("description")
+        )
+
+        db.session.add(recipe)
+        db.session.commit()
+
+        return recipe, 201
+
+
+@recipe_ns.route('/<int:id>')
+class RecipeById(Resource):
+
+    @recipe_ns.marshal_with(recipe_model)
+    def get(self, id):
+        return Recipe.query.get_or_404(id)
+
+    @recipe_ns.expect(recipe_model)
+    @recipe_ns.marshal_with(recipe_model)
+    def put(self, id):
+        recipe = Recipe.query.get_or_404(id)
+        data = request.get_json()
+
+        recipe.title = data.get("title")
+        recipe.description = data.get("description")
+
+        db.session.commit()
         return recipe
-     
-    @api.marshal_with(recipe_model)
-    def put(self,id):
-        """Update a recipe by id"""
-        
-        recipe_to_update=Recipe.query.get_or_404(id)
 
-        data=request.get_json()
-
-        recipe_to_update.update(data.get('title'),data.get('description'))
-
-        return recipe_to_update
-
-    @api.marshal_with(recipe_model)
-    def delete(self,id):
-        """Delete a recipe by id"""
-        
-        recipe_to_delete=Recipe.query.get_or_404(id)
-
-        recipe_to_delete.delete()
-
-        return recipe_to_delete
+    def delete(self, id):
+        recipe = Recipe.query.get_or_404(id)
+        db.session.delete(recipe)
+        db.session.commit()
+        return {"message": "Recipe deleted"}
 
 
-@app.shell_context_processor
-def make_shell_context():
-    return {
-        "db":db,
-        "Recipe":Recipe
-    }
-
-
-if __name__ == '__main__':
-    app.run()
-
-
+if __name__ == "__main__":
+    app.run(debug=True)
