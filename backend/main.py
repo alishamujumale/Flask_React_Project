@@ -1,9 +1,11 @@
 from flask import Flask
 from flask_restx import Api,Resource
 from config import DevConfig
+from flask_cors import CORS 
 
 
 app=Flask(__name__)
+CORS(app)
 app.config.from_object(DevConfig)
 api=Api(app,doc='/docs')
 
