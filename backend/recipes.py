@@ -1,45 +1,48 @@
-from flask import Flask, request,jsonify
-from flask_restx import Resource, fields,Namespace
+from flask import request, abort
+from flask_restx import Resource, fields, Namespace
+from flask_jwt_extended import jwt_required
 from models import Recipe
 from exts import db
-from flask_jwt_extended import jwt_required
 
+# ---------------- NAMESPACES ----------------
 
-auth_ns=Namespace('auth',description="A namespace for our authentication")
-recipe_ns=Namespace('recipe',description="A namespace for recipes")
+auth_ns = Namespace('auth', description="Authentication APIs")
+recipe_ns = Namespace('recipe', description="Recipe APIs")
 
-# Models
+# ---------------- MODELS ----------------
+
 recipe_model = recipe_ns.model(
     "Recipe",
     {
         "id": fields.Integer(),
-        "title": fields.String(),
-        "description": fields.String()
+        "title": fields.String(required=True),
+        "description": fields.String(required=True),
     }
 )
-
-
 
 # ---------------- AUTH ----------------
 
 @auth_ns.route('/hello')
 class Hello(Resource):
     def get(self):
-        return {"message": "Hello World"}  
+        return {"message": "Hello World"}
+
 
 # ---------------- RECIPES ----------------
 
-@recipe_ns.route('/')
+@recipe_ns.route('/recipes')
 class Recipes(Resource):
 
     @recipe_ns.marshal_list_with(recipe_model)
     def get(self):
+        """Get all recipes"""
         return Recipe.query.all()
 
     @recipe_ns.expect(recipe_model)
     @recipe_ns.marshal_with(recipe_model)
     @jwt_required()
     def post(self):
+        """Create a recipe"""
         data = request.get_json()
 
         recipe = Recipe(
@@ -53,28 +56,40 @@ class Recipes(Resource):
         return recipe, 201
 
 
-@recipe_ns.route('/<int:id>')
+@recipe_ns.route('/recipes/<int:id>')
 class RecipeById(Resource):
 
     @recipe_ns.marshal_with(recipe_model)
     def get(self, id):
-        return Recipe.query.get_or_404(id)
+        """Get recipe by ID"""
+        recipe = db.session.get(Recipe, id)
+        if not recipe:
+            abort(404)
+        return recipe
 
     @recipe_ns.expect(recipe_model)
     @recipe_ns.marshal_with(recipe_model)
     @jwt_required()
     def put(self, id):
-        recipe = Recipe.query.get_or_404(id)
-        data = request.get_json()
+        """Update recipe"""
+        recipe = db.session.get(Recipe, id)
+        if not recipe:
+            abort(404)
 
+        data = request.get_json()
         recipe.title = data.get("title")
         recipe.description = data.get("description")
 
         db.session.commit()
         return recipe
+
     @jwt_required()
     def delete(self, id):
-        recipe = Recipe.query.get_or_404(id)
+        """Delete recipe"""
+        recipe = db.session.get(Recipe, id)
+        if not recipe:
+            abort(404)
+
         db.session.delete(recipe)
         db.session.commit()
         return {"message": "Recipe deleted"}

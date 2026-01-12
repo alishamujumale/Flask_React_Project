@@ -17,6 +17,12 @@ signup_model = auth_ns.model(
     }
 )
 
+@auth_ns.route('/hello')
+class Hello(Resource):
+    def get(self):
+        return {"message": "Hello World"}  
+
+
 login_model=auth_ns.model(
     "Login",
     {
