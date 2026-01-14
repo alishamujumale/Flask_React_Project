@@ -22,7 +22,7 @@ recipe_model = recipe_ns.model(
 
 # ---------------- AUTH ----------------
 
-@auth_ns.route('/hello')
+@recipe_ns.route('/hello')
 class Hello(Resource):
     def get(self):
         return {"message": "Hello World"}

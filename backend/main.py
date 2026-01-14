@@ -12,7 +12,11 @@ from auth import auth_ns
 
 def create_app(config=DevConfig):   
     app = Flask(__name__)
-    CORS(app)
+    CORS(
+    app,
+    resources={r"/*": {"origins": ["http://localhost:3000"]}}
+)
+
 
     app.config.from_object(config)  
 
