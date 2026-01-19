@@ -1,26 +1,33 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
-import React, { useEffect, useState } from 'react'
+import 'bootstrap/dist/css/bootstrap.min.css'
+import React from 'react'
 import { createRoot } from 'react-dom/client'
 
+import {
+  BrowserRouter,
+  Routes,
+  Route
+} from 'react-router-dom'
+
+import Navbar from './components/Navbar'
+import Home from './components/Home'
+import Login from './components/Login'
+import SignUp from './components/SignUp'
+import CreateRecipe from './components/CreateRecipe'
+
 const App = () => {
-  const [message, setMessage] = useState('')
-
-  useEffect(() => {
-    console.log("useEffect running")
-
-    fetch('/recipe/hello')
-      .then(res => res.json())
-      .then(data => {
-        console.log("DATA:", data)
-        setMessage(data.message)
-      })
-      .catch(err => console.error(err))
-  }, [])
-
   return (
-    <div className="app">
-      <h1>{message}</h1>
-    </div>
+    <BrowserRouter>
+      <div className="container">
+        <Navbar />
+
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/create_recipe" element={<CreateRecipe />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   )
 }
 
