@@ -10,7 +10,7 @@ import CreateRecipe from './components/CreateRecipe'
 
 const App = () => {
   return (
-    <div className="container">
+    <div className="">
       <Navbar />
 
       <Routes>
