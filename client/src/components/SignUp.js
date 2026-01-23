@@ -1,30 +1,19 @@
 import React, { useState } from "react";
 import { Form, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import {useForm} from 'react-hook-form'; 
 
 const SignUp = () => {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const {register,watch,handleSubmit: hookFormSubmit,reset,formState:{errors}} = useForm();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "username") setUsername(value);
-    if (name === "email") setEmail(value);
-    if (name === "password") setPassword(value);
-    if (name === "confirmPassword") setConfirmPassword(value);
-  };
+  const watchUsername = watch("username");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log({ username, email, password, confirmPassword });
+  const handleSubmit = hookFormSubmit((data) => {
+    console.log(data);
+    console.log("Watched username:", watchUsername);
     // Add API call here
-    setUsername("");
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
-  };
+    reset();
+  });
 
   return <div className="container">
     <div className="form">
@@ -34,33 +23,38 @@ const SignUp = () => {
             <Form.Label>Username</Form.Label>
             <Form.Control type="text" 
             placeholder="Your Username"
-            value={username}
-            onChange={handleChange}
-            name="username"/>
+            {...register("username",{required:true,maxLength:25})}
+            />
           </Form.Group>
+          <br></br>
+          {errors.username && <span style={{color:'red'}}>Username is required and max length is 25</span>}
+          
           <Form.Group>
             <Form.Label>Email</Form.Label>
             <Form.Control type="email"
             placeholder="Your Email"
-            value={email}
-            onChange={handleChange} 
-            name="email"/>
+            {...register("email",{required:true,maxLength:80})}/>
+            <br></br>
+          {errors.email && <span style={{color:'red'}}>Email is required and max length is 80</span>}
           </Form.Group>
           <Form.Group>
             <Form.Label>Password</Form.Label>
             <Form.Control type="password" 
             placeholder="Your Password"
-            value={password}
-            onChange={handleChange}
-            name="password"/>
+            {...register("password",{required:true,minLength:8})}/>
+            <br></br>
+          {errors.password && <span style={{color:'red'}}>Password is required and min length is 8</span>}
+          <br></br>
           </Form.Group>
           <Form.Group>
             <Form.Label>Confirm Password</Form.Label>
             <Form.Control type="password" 
             placeholder="Your Password"
-            value={confirmPassword}
-            onChange={handleChange}
-            name="confirmPassword"/>
+            {...register("confirmPassword",{required:true,minLength:8})}
+            />
+            <br></br>
+          {errors.confirmPassword && <span style={{color:'red'}}>Confirm Password is required and min length is 8</span>}
+          <br></br>
           </Form.Group>
           <br></br>
           <Button variant="primary" type="submit">Sign Up</Button>
