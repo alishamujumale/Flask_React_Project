@@ -1,21 +1,23 @@
 import React, { useState } from "react";
 import { Form, Button, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 
 const SignUp = () => {
   const { register, watch, handleSubmit: hookFormSubmit, reset, formState: { errors } } = useForm();
-  const [show, setShow] = useState(true);
-  const [serverResponse,setServerResponse]=useState("");
+  const [show, setShow] = useState(false);
+  const [serverResponse, setServerResponse] = useState("");
+  const [signupError, setSignupError] = useState("");
+  const navigate = useNavigate();
 
-  const watchUsername = watch("username");
+  const watchPassword = watch("password");
 
   const handleSubmit = hookFormSubmit((data) => {
     console.log(data);
-    console.log("Watched username:", watchUsername);
-    // Add API call here
+    setSignupError("");
+    
     if (data.password === data.confirmPassword) {
-
       const body = {
         username: data.username,
         email: data.email,
@@ -26,82 +28,76 @@ const SignUp = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
-      }
+      };
+      
       fetch('/auth/signup', requestOptions)
         .then(response => response.json())
         .then(data => {
           console.log(data);
-          setServerResponse(data.message);
-          console.log(data.message);
+          if (data.message.includes("successfully")) {
+            setServerResponse(data.message);
+            setShow(true);
+            reset();
+            setTimeout(() => navigate('/login'), 2000);
+          } else {
+            setSignupError(data.message);
+          }
         })
-        .catch(error=>console.log(error));
-        setShow(true);
-
-      reset();
+        .catch(error => {
+          console.log(error);
+          setSignupError("Signup failed. Please try again.");
+        });
     }
     else {
-      alert("Passwords do not match!");
+      setSignupError("Passwords do not match!");
     }
-
   });
 
   return <div className="container">
     <div className="form">
-      
-       {show ?
-       <>
-       
-       <Alert variant="success" onClose={() => setShow(false)} dismissible>
-        
-        <p>
-          {serverResponse}
-        </p>
-      </Alert>
       <h1>Sign Up Page</h1>
-      </>
-      :
-      <h1>Sign Up Page</h1>
-       }
+      {show && (
+        <Alert variant="success" onClose={() => setShow(false)} dismissible>
+          <p>{serverResponse}</p>
+        </Alert>
+      )}
+      {signupError && <p style={{ color: 'red' }}><small>{signupError}</small></p>}
       <form onSubmit={handleSubmit}>
         <Form.Group>
           <Form.Label>Username</Form.Label>
           <Form.Control type="text"
             placeholder="Your Username"
-            {...register("username", { required: true, maxLength: 25 })}
+            {...register("username", { required: "Username is required", maxLength: { value: 25, message: "Username cannot exceed 25 characters" } })}
           />
         </Form.Group>
-
-        {errors.username && <p style={{ color: 'red' }}><small>Username is required and max length is 25</small></p>}
+        {errors.username && <p style={{ color: 'red' }}><small>{errors.username.message}</small></p>}
 
         <Form.Group>
           <Form.Label>Email</Form.Label>
           <Form.Control type="email"
             placeholder="Your Email"
-            {...register("email", { required: true, maxLength: 80 })} />
-
-          {errors.email && <p style={{ color: 'red' }}><small>Email is required and max length is 80</small></p>}
+            {...register("email", { required: "Email is required", maxLength: { value: 80, message: "Email cannot exceed 80 characters" } })} />
+          {errors.email && <p style={{ color: 'red' }}><small>{errors.email.message}</small></p>}
         </Form.Group>
+
         <Form.Group>
           <Form.Label>Password</Form.Label>
           <Form.Control type="password"
             placeholder="Your Password"
-            {...register("password", { required: true, minLength: 8 })} />
-
-          {errors.password && <p style={{ color: 'red' }}><small>Password is required and min length is 8</small></p>}
-
+            {...register("password", { required: "Password is required", minLength: { value: 8, message: "Password must be at least 8 characters" } })} />
+          {errors.password && <p style={{ color: 'red' }}><small>{errors.password.message}</small></p>}
         </Form.Group>
+
         <Form.Group>
           <Form.Label>Confirm Password</Form.Label>
           <Form.Control type="password"
-            placeholder="Your Password"
-            {...register("confirmPassword", { required: true, minLength: 8 })}
+            placeholder="Confirm Your Password"
+            {...register("confirmPassword", { required: "Confirm Password is required", minLength: { value: 8, message: "Password must be at least 8 characters" }, validate: (value) => value === watchPassword || "Passwords do not match" })}
           />
-
-          {errors.confirmPassword && <p style={{ color: 'red' }}><small>Confirm Password is required and min length is 8</small></p>}
-
+          {errors.confirmPassword && <p style={{ color: 'red' }}><small>{errors.confirmPassword.message}</small></p>}
         </Form.Group>
-        <br></br>
 
+        <br></br>
         <Button variant="primary" type="submit">Sign Up</Button>
       </form>
       <Form.Group>
